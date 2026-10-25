@@ -1,0 +1,43 @@
+name: Build AB SIGNATURE APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Extract Android project
+        run: |
+          ZIP_FILE=$(find . -maxdepth 2 -name '*Android_Studio_Project*.zip' -print -quit)
+          test -n "$ZIP_FILE"
+          mkdir -p build-source
+          unzip -q "$ZIP_FILE" -d build-source
+          PROJECT_DIR=$(find build-source -maxdepth 3 -type f -path '*/app/build.gradle' -print -quit | sed 's#/app/build.gradle##')
+          test -n "$PROJECT_DIR"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        run: gradle -p "$PROJECT_DIR" assembleDebug
+
+      - name: Save APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AB-SIGNATURE-APK
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
+          
